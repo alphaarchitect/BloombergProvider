@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+	<!-- Make sure you install fantomas first, dotnet tool install fantomas-tool -g -->
+  <!--<Target Name="Fantomas" AfterTargets="BeforeBuild">
+		<Exec Command="fantomas -config $(SolutionDir)fantomas-config.json -recurse $(ProjectDir)" ConsoleToMsBuild="true" IgnoreExitCode="false" />
+	</Target>-->
+
+	<!-- Make sure you install fsharplint first, dotnet tool install fsharplint -g -->
+	<Target Name="FSharpLint" AfterTargets="Fantomas">
+		<Exec Command="dotnet fsharplint -f msbuild lint --lint-config $(SolutionDir)fsharplint.json $(ProjectDir)" ConsoleToMsBuild="true" IgnoreExitCode="false" />
+	</Target>
+</Project>

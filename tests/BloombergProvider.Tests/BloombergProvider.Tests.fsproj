@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\netfx.props" />
+  <Import Project="$(SolutionDir)common.proj" />
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="schemas\fetchschemas.bat" />
+    <Content Include="schemas\blp.apiflds.schema.xml" />
+    <Content Include="schemas\blp.instruments.schema.xml" />
+    <Content Include="schemas\blp.irdctk3.schema.xml" />
+    <Content Include="schemas\blp.mktbar.schema.xml" />
+    <Content Include="schemas\blp.mktdata.schema.xml" />
+    <Content Include="schemas\blp.mktdepthdata.schema.xml" />
+    <Content Include="schemas\blp.mktlist.schema.xml" />
+    <Content Include="schemas\blp.mktvwap.schema.xml" />
+    <Content Include="schemas\blp.pagedata.schema.xml" />
+    <Content Include="schemas\blp.refdata.schema.xml" />
+    <Content Include="schemas\blp.srcref.schema.xml" />
+    <Content Include="schemas\blp.tasvc.schema.xml" />
+    <None Include="app.config" />
+    <Compile Include="BloombergProvider.Tests.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.10.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
+    <ProjectReference Include="..\..\src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj">
+      <Name>BloombergProvider.Runtime</Name>
+      <Project>{7e90d6ce-a10b-4858-a5bc-41df7250cbca}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

@@ -1,0 +1,184 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="EnumerationValueType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Int32"/>
+      <xs:enumeration value="String"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="StatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Active"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="TagType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="bpipe"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="MaxOccursUnbounded">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="unbounded"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="MaxOccursType">
+    <xs:union memberTypes="xs:unsignedShort MaxOccursUnbounded"/>
+  </xs:simpleType>
+  <xs:simpleType name="BaseType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Boolean"/>
+      <xs:enumeration value="Date"/>
+      <xs:enumeration value="Datetime"/>
+      <xs:enumeration value="Float32"/>
+      <xs:enumeration value="Float64"/>
+      <xs:enumeration value="Int32"/>
+      <xs:enumeration value="Int64"/>
+      <xs:enumeration value="String"/>
+      <xs:enumeration value="Time"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ComplexType">
+    <xs:union memberTypes="BaseType xs:string"/>
+  </xs:simpleType>
+  <xs:element name="ServiceDefinition">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="service">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:choice maxOccurs="unbounded">
+                <xs:element maxOccurs="unbounded" name="event">
+                  <xs:complexType>
+                    <xs:sequence>
+                      <xs:element minOccurs="0" name="description" />
+                      <xs:element maxOccurs="unbounded" name="eventId" type="xs:unsignedShort" />
+                      <xs:element name="cacheable" type="xs:boolean" />
+                    </xs:sequence>
+                    <xs:attribute name="name" type="xs:string" use="required" />
+                    <xs:attribute name="eventType" type="xs:string" use="required" />
+                    <xs:attribute name="status" type="StatusType" use="optional" />
+                  </xs:complexType>
+                </xs:element>
+                <xs:element maxOccurs="unbounded" name="operation">
+                  <xs:complexType>
+                    <xs:sequence>
+                      <xs:element name="request" type="xs:string" />
+                      <xs:element minOccurs="0" name="pivotElementName" type="xs:string" />
+                      <xs:element minOccurs="0" name="maxPivotElementsPerRequest" type="xs:unsignedByte" />
+                      <xs:element minOccurs="0" name="requestSelection" type="xs:string" />
+                      <xs:element minOccurs="0" name="response" type="xs:string" />
+                      <xs:element minOccurs="0" maxOccurs="unbounded" name="responseSelection" type="xs:string" />
+                    </xs:sequence>
+                    <xs:attribute name="name" type="xs:string" use="required" />
+                    <xs:attribute name="serviceId" type="xs:unsignedInt" use="required" />
+                    <xs:attribute name="status" type="StatusType" use="optional" />
+                  </xs:complexType>
+                </xs:element>
+                <xs:element name="defaultServiceId" type="xs:unsignedInt" />
+                <xs:element name="publisherSupportsRecap" type="xs:boolean" />
+                <xs:element name="authoritativeSourceSupportsRecap" type="xs:boolean" />
+                <xs:element name="SubscriberResolutionServiceId" type="xs:unsignedShort" />
+                <xs:element name="isInfrastructureService" type="xs:boolean" />
+                <xs:element name="isMetered" type="xs:boolean" />
+                <xs:element name="appendMtrId" type="xs:boolean" />
+                <xs:element name="persistentLastValueCache" type="xs:boolean" />
+              </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="version" type="xs:string" use="required" />
+            <xs:attribute name="authorizationService" type="xs:string" use="optional" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="schema">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element maxOccurs="unbounded" name="sequenceType">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="description" type="xs:string" />
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="element">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="description" type="xs:string" />
+                          <xs:element minOccurs="0" name="alternateId" type="xs:unsignedInt" />
+                          <xs:element minOccurs="0" maxOccurs="unbounded" name="alternateName" type="xs:string" />
+                          <xs:element minOccurs="0" maxOccurs="unbounded" name="fieldset">
+                            <xs:complexType>
+                              <xs:attribute name="tag" type="TagType" use="required" />
+                              <xs:attribute name="name" type="xs:string" use="required" />
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="cacheable" type="xs:boolean" />
+                          <xs:element name="cachedOnlyOnInitialPaint" type="xs:boolean" />
+                        </xs:sequence>
+                        <xs:attribute name="name" type="xs:string" use="required" />
+                        <xs:attribute name="type" type="ComplexType" use="required" />
+                        <xs:attribute name="maxOccurs" type="MaxOccursType" use="optional" />
+                        <xs:attribute name="minOccurs" type="xs:unsignedByte" use="optional" />
+                        <xs:attribute name="id" type="xs:unsignedInt" use="optional" />
+                        <xs:attribute name="status" type="StatusType" use="optional" />
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="name" type="xs:string" use="required" />
+                  <xs:attribute name="status" type="StatusType" use="optional" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element minOccurs="0" maxOccurs="unbounded" name="choiceType">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="description" type="xs:string" />
+                    <xs:element maxOccurs="unbounded" name="element">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="description" type="xs:string" />
+                          <xs:element name="cacheable" type="xs:boolean" />
+                          <xs:element name="cachedOnlyOnInitialPaint" type="xs:boolean" />
+                        </xs:sequence>
+                        <xs:attribute name="name" type="xs:string" use="required" />
+                        <xs:attribute name="type" type="ComplexType" use="required" />
+                        <xs:attribute name="maxOccurs" type="MaxOccursType" use="optional" />
+                        <xs:attribute name="status" type="StatusType" use="optional" />
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="name" type="xs:string" use="required" />
+                  <xs:attribute name="status" type="StatusType" use="optional" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element minOccurs="0" maxOccurs="unbounded" name="enumerationType">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="description" type="xs:string" />
+                    <xs:element maxOccurs="unbounded" name="enumerator">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="description" type="xs:string" />
+                          <xs:element name="value">
+                            <xs:complexType>
+                              <xs:choice>
+                                <xs:element name="Int32" type="xs:unsignedShort" />
+                                <xs:element name="String" type="xs:string" />
+                              </xs:choice>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="name" type="xs:string" use="required" />
+                        <xs:attribute name="status" type="StatusType" use="optional" />
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="name" type="xs:string" use="required" />
+                  <xs:attribute name="type" type="EnumerationValueType" use="required" />
+                  <xs:attribute name="status" type="StatusType" use="optional" />
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string" use="required" />
+      <xs:attribute name="version" type="xs:string" use="required" />
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

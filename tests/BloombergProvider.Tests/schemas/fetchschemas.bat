@@ -1,0 +1,2 @@
+for %%S in (mktdata, refdata, srcref, mktvwap, mktdepthdata, mktbar, mktlist, apiflds, instruments, pagedata, tasvc, irdctk3) do
+	(SchemaDownloader_64.exe -file blp.%%S.schema.xml -auth none -s //blp/%%S)
