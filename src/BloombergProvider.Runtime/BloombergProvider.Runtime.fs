@@ -1,6 +1,6 @@
 namespace AlphaArchitect
 
-type DataSource = Empty
+type Runtime = Empty
 
 #if !IS_DESIGNTIME
 // Put the TypeProviderAssemblyAttribute in the runtime DLL, pointing to the design-time DLL

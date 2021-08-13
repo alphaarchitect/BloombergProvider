@@ -18,7 +18,7 @@ module Result =
 
     let folder acc x =
         match acc, x with
-        | Ok xs, Ok y -> Ok (y :: xs)
+        | Ok xs, Ok y -> Ok(y :: xs)
         | Error xs, Ok _ -> Error xs
-        | Ok _, Error y -> Error [y]
-        | Error xs, Error y -> Error (y :: xs)
+        | Ok _, Error y -> Error [ y ]
+        | Error xs, Error y -> Error(y :: xs)

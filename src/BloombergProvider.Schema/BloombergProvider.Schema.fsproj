@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1; net461</TargetFrameworks>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="blp.schema.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Common.fs" />
+    <Compile Include="Schema.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Data" Version="4.2.2" />
+    <PackageReference Include="QuikGraph" Version="2.3.0" />
+    <PackageReference Include="QuikGraph.Graphviz" Version="2.3.0" />
+  </ItemGroup>
+
+</Project>

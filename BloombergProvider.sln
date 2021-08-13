@@ -1,15 +1,22 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31313.79
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{63297B98-5CED-492C-A5B7-A5B4F73CF142}"
 	ProjectSection(SolutionItems) = preProject
 		paket.dependencies = paket.dependencies
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BloombergProvider.Runtime", "src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj", "{41BB04BF-7621-478C-9344-466FD89CC71B}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "BloombergProvider.Runtime", "src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj", "{41BB04BF-7621-478C-9344-466FD89CC71B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BloombergProvider.DesignTime", "src\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj", "{ECF3C4BF-862B-46F4-8B5D-6244C7B1BDEC}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "BloombergProvider.DesignTime", "src\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj", "{ECF3C4BF-862B-46F4-8B5D-6244C7B1BDEC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{ED0CABB4-F347-431C-BE6A-E3A21DAC73FC}"
+	ProjectSection(SolutionItems) = preProject
+		common.proj = common.proj
+	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BloombergProvider.Schema", "src\BloombergProvider.Schema\BloombergProvider.Schema.fsproj", "{A03D87CB-ADF7-4EE4-9D21-E9BC69EA0890}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,8 +32,15 @@ Global
 		{ECF3C4BF-862B-46F4-8B5D-6244C7B1BDEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ECF3C4BF-862B-46F4-8B5D-6244C7B1BDEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ECF3C4BF-862B-46F4-8B5D-6244C7B1BDEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A03D87CB-ADF7-4EE4-9D21-E9BC69EA0890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A03D87CB-ADF7-4EE4-9D21-E9BC69EA0890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A03D87CB-ADF7-4EE4-9D21-E9BC69EA0890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A03D87CB-ADF7-4EE4-9D21-E9BC69EA0890}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0C017A50-EAA7-4A8D-B59A-6BB3A178507E}
 	EndGlobalSection
 EndGlobal

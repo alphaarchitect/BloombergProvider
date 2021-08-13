@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="schemas\fetchschemas.bat" />
+    <Content Include="schemas\blp.simple.schema.xml" />
     <Content Include="schemas\blp.apiflds.schema.xml" />
     <Content Include="schemas\blp.instruments.schema.xml" />
     <Content Include="schemas\blp.irdctk3.schema.xml" />
@@ -32,6 +33,7 @@
       <Project>{7e90d6ce-a10b-4858-a5bc-41df7250cbca}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\BloombergProvider.Schema\BloombergProvider.Schema.fsproj"/>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
