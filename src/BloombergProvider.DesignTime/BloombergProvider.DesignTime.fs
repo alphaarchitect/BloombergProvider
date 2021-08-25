@@ -33,7 +33,12 @@ module Sequence =
         | UnknownStatus of Name: Name * Status: string
         | Element of Name: Name * list<ElementError>
 
-    let private elementToProperty (x: BlpSchema.Element) tryGetType =
+    type Property =
+        { Parameter: option<ProvidedParameter>
+          Field: ProvidedField
+          Property: ProvidedProperty }
+
+    let private elementToProperty (x: BlpSchema.Element) tryGetType isMutable =
         match x.Status |> Option.map Union.fromString<Status> with
         | None
         | Some (Some Active) ->
@@ -84,24 +89,35 @@ module Sequence =
                     let n = x.Name
                     let t = y.Type
 
-                    let c =
-                        match y.DefaultValue with
-                        | Some o -> ProvidedParameter(n, t, optionalValue = o)
-                        | None -> ProvidedParameter(n, t)
-
                     let f = ProvidedField(n, t)
 
+                    let c =
+                        match isMutable with
+                        | true -> None
+                        | false ->
+                            match y.DefaultValue with
+                            | Some o -> ProvidedParameter(n, t, optionalValue = o)
+                            | None -> ProvidedParameter(n, t)
+                            |> Some
+
                     let p =
-                        ProvidedProperty(n, t, getterCode = (fun args ->
+                        let getterCode = (fun args ->
                             match args with
                             | this::[] -> Expr.FieldGet(this, f)
-                            | _ -> failwith "Unknown arguments to getter"))
+                            | _ -> failwith "Unsupported arguments to getter")
+                        match isMutable with
+                        | true -> ProvidedProperty(n, t, getterCode = getterCode, setterCode =
+                            (fun args ->
+                                match args with
+                                | this::[x] -> Expr.FieldSet(this, f, x)
+                                | _ -> failwith "Unsupported arguments to setter"))
+                        | false -> ProvidedProperty(n, t, getterCode = getterCode)
 
                     p.AddXmlDoc(x.Description)
 
-                    {| Parameter = c
-                       Field = f
-                       Property = p |})
+                    { Parameter = c
+                      Field = f
+                      Property = p })
         | Some None ->
             ElementError.UnknownStatus(x.Name, x.Status.Value)
             |> Error
@@ -122,9 +138,12 @@ module Sequence =
             | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(s.Name, duplicates)
             | _ ->
 
+                let MAXIMUM_CONSTRUCTOR_PARAMETERS = 288
+                let isMutable = s.Elements |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS
+
                 let elements =
                     s.Elements
-                    |> Array.map (fun e -> elementToProperty e tryGetType)
+                    |> Array.map (fun e -> elementToProperty e tryGetType isMutable)
                     |> Array.fold Result.folder (Result.Ok [])
 
                 match elements with
@@ -139,21 +158,15 @@ module Sequence =
                             isErased = false
                         )
 
-                    let MAXIMUM_CONSTRUCTOR_PARAMETERS = 288
-                    (* TODO: FIX THIS *)
-                    let es' =
-                        es
-                        |> List.take (List.min [MAXIMUM_CONSTRUCTOR_PARAMETERS; es |> List.length])
-
                     providedSequenceType.AddMember
                     <| ProvidedConstructor(
-                        es'
-                        |> List.map (fun x -> x.Parameter),
+                        es
+                        |> List.choose ((fun x -> x.Parameter) >> id),
                         invokeCode =
                             fun args ->
                                 match args with
                                 | this :: args ->
-                                    List.zip args (es' |> List.map (fun x -> x.Field))
+                                    List.zip args (es |> List.choose (fun x -> x.Parameter |> Option.map (fun _ -> x.Field)))
                                     |> List.map (fun (arg, field) -> Expr.FieldSet(this, field, arg))
                                     |> (fun xs ->
                                         match xs with
