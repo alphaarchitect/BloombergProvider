@@ -256,16 +256,20 @@ module Enumeration =
         | MultipleValues of Label: Label
         | UnknownStatus of Label: string * Status: string
         | MissingValue of Label: Label
+        | TypeInconsistent of Label: Label
 
     type EnumerationError =
         | Empty of Name: Name
         | Enumerator of Name: Name * list<EnumeratorError>
         | Duplicates of Name: Name * list<Label>
-        | TypeInconsistent of Name: Name
         | UnknownType of Name: Name * Type: string
         | UnknownStatus of Name: Name * Status: string
 
-    let private enumeratorToTuple (x: BlpSchema.Enumerator) =
+    type EnumerationField =
+        | String of Name: string * Description: string
+        | Int32 of Name: string * Value: int32 * Description: string
+
+    let private schemaEnumeratorToEnumerationField (x: BlpSchema.Enumerator) =
         match (x.Status |> Option.map Union.fromString<Status>) with
         | None
         | Some (Some Active) ->
@@ -273,11 +277,11 @@ module Enumeration =
             | Some s, None ->
                 try
                     Ok
-                    <| (EnumerationType.Int32, x.Name, int32 s |> Some, x.Description)
+                    <| EnumerationField.Int32(Name = x.Name, Value = int32 s, Description = x.Description)
                 with :? FormatException -> Int32Format(x.Name, s) |> Error
             | None, Some s when s = x.Name || (s = "THAIL" && x.Name = "THAI") ->
                 Ok
-                <| (EnumerationType.String, x.Name, None, x.Description)
+                <| EnumerationField.String(Name = x.Name, Description = x.Description)
             | None, Some s -> StringInconsistent(x.Name, s) |> Error
             | None, None -> MissingValue(x.Name) |> Error
             | Some _, Some _ -> MultipleValues(x.Name) |> Error
@@ -287,24 +291,28 @@ module Enumeration =
 
     let private effectiveEnumerationType
         (e: BlpSchema.EnumerationType)
-        (enumeratorType: EnumerationType)
-        (enumerators: (EnumerationType * string * int32 option * string) list)
+        (enumerators: EnumerationField list)
         =
-        match Union.fromString<EnumerationType> (e.Type), enumeratorType with
-        | Some EnumerationType.String, EnumerationType.String ->
+        match Union.fromString<EnumerationType> (e.Type) with
+        | Some EnumerationType.String ->
             enumerators
-            |> List.map (fun (_, label, _, doc) -> label, doc)
-            |> Map.ofList
-            |> Enumeration.String
-            |> Ok
-        | Some EnumerationType.Int32, EnumerationType.Int32 ->
+            |> List.map (fun x ->
+                match x with
+                | EnumerationField.String (name, documentation) -> Ok (name, documentation)
+                | EnumerationField.Int32 (name, _, _) -> Error <| TypeInconsistent(name))
+            |> List.fold Result.folder (Result.Ok [])
+            |> Result.map (Map.ofList >> Enumeration.String)
+            |> Result.mapError (fun xs -> Enumerator(e.Name, xs))
+        | Some EnumerationType.Int32 ->
             enumerators
-            |> List.map (fun (_, label, value, doc) -> (label, value.Value), doc)
-            |> Map.ofList
-            |> Enumeration.Int32
-            |> Ok
-        | Some _, _ -> Error <| TypeInconsistent(e.Name)
-        | None, _ -> Error <| UnknownType(e.Name, e.Type)
+            |> List.map (fun x ->
+                match x with
+                | EnumerationField.String (name, _) -> Error <| TypeInconsistent(name)
+                | EnumerationField.Int32 (name, value, description) -> Ok ((name, value), description))
+            |> List.fold Result.folder (Result.Ok [])
+            |> Result.map (Map.ofList >> Enumeration.Int32)
+            |> Result.mapError (fun xs -> Enumerator(e.Name, xs))
+        | None -> Error <| UnknownType(e.Name, e.Type)
 
     let createType (e: BlpSchema.EnumerationType) (assembly: Assembly) nameSpace =
         match e.Status |> Option.map Union.fromString<Status> with
@@ -338,20 +346,12 @@ module Enumeration =
 
                 let enumerators =
                     e.Enumerators
-                    |> Array.map enumeratorToTuple
+                    |> Array.map schemaEnumeratorToEnumerationField
                     |> Array.fold Result.folder (Result.Ok [])
 
                 let enumeration =
                     match enumerators with
-                    | Ok enums ->
-                        let types =
-                            enums
-                            |> List.map (fun (x, _, _, _) -> x)
-                            |> Set.ofList
-
-                        match Set.count types with
-                        | 1 -> effectiveEnumerationType e (types |> Set.toSeq |> Seq.head) enums
-                        | _ -> TypeInconsistent(e.Name) |> Error
+                    | Ok enums -> effectiveEnumerationType e enums
                     | Error es -> Enumerator(e.Name, es) |> Error
 
                 enumeration
