@@ -38,7 +38,27 @@ module Sequence =
           Field: ProvidedField
           Property: ProvidedProperty }
 
-    let private elementToProperty (x: BlpSchema.Element) tryGetType isMutable =
+    type MinMaxOccurs =
+        | One
+        | ZeroOrOne
+        | OneOrMore
+        | ZeroOrMore
+        | Unknown of MinOccurs: string * MaxOccurs: string
+
+    type MutableType =
+        | AllMutable
+        | OptionMutable
+        | Immutable
+
+    let private elementToMinMaxOccurs (x: BlpSchema.Element) =
+        match x.MinOccurs |> Option.defaultValue "1", x.MaxOccurs |> Option.defaultValue "1" with
+        | "1", "1" -> One
+        | "0", "1" -> ZeroOrOne
+        | "1", "unbounded" -> OneOrMore
+        | "0", "unbounded" -> ZeroOrMore
+        | min, max -> Unknown(MinOccurs = min, MaxOccurs = max)
+
+    let private elementToProperty (x: BlpSchema.Element) tryGetType mutableType =
         match x.Status |> Option.map Union.fromString<Status> with
         | None
         | Some (Some Active) ->
@@ -67,21 +87,21 @@ module Sequence =
 
                 t
                 |> Result.bind (fun t' ->
-                    match x.MinOccurs |> Option.defaultValue "1", x.MaxOccurs |> Option.defaultValue "1" with
-                    | "1", "1" -> Ok {| DefaultValue = None; Type = t' |}
-                    | "0", "1" ->
-                        {| DefaultValue = Some None
-                           Type = typedefof<option<_>>.MakeGenericType (t') |}
-                        |> Ok
-                    | "1", "unbounded" ->
-                        {| DefaultValue = None
-                           Type = typedefof<_ * _>.MakeGenericType (t', typedefof<list<_>>.MakeGenericType t') |}
-                        |> Ok
-                    | "0", "unbounded" ->
-                        {| DefaultValue = None
-                           Type = typedefof<list<_>>.MakeGenericType (t') |}
-                        |> Ok
-                    | min, max -> UnknownMinMaxOccurs(min, max) |> Error)
+                        match elementToMinMaxOccurs(x) with
+                        | One -> Ok {| DefaultValue = None; Type = t' |}
+                        | ZeroOrOne ->
+                            {| DefaultValue = Some None
+                               Type = typedefof<option<_>>.MakeGenericType (t') |}
+                            |> Ok
+                        | OneOrMore ->
+                            {| DefaultValue = None
+                               Type = typedefof<_ * _>.MakeGenericType (t', typedefof<list<_>>.MakeGenericType t') |}
+                            |> Ok
+                        | ZeroOrMore ->
+                            {| DefaultValue = None
+                               Type = typedefof<list<_>>.MakeGenericType (t') |}
+                            |> Ok
+                        | Unknown (min, max) -> UnknownMinMaxOccurs(MinOccurs = min, MaxOccurs = max) |> Error)
 
             propertyType
             |> Result.map
@@ -92,26 +112,26 @@ module Sequence =
                     let f = ProvidedField(n, t)
 
                     let c =
-                        match isMutable with
-                        | true -> None
-                        | false ->
-                            match y.DefaultValue with
-                            | Some o -> ProvidedParameter(n, t, optionalValue = o)
-                            | None -> ProvidedParameter(n, t)
-                            |> Some
+                        match mutableType, y.DefaultValue with
+                        | AllMutable, _
+                        | OptionMutable, Some _ -> None
+                        | OptionMutable, None
+                        | Immutable, None -> ProvidedParameter(n, t) |> Some
+                        | _, Some o -> ProvidedParameter(n, t, optionalValue = o) |> Some
 
                     let p =
                         let getterCode = (fun args ->
                             match args with
                             | this::[] -> Expr.FieldGet(this, f)
                             | _ -> failwith "Unsupported arguments to getter")
-                        match isMutable with
-                        | true -> ProvidedProperty(n, t, getterCode = getterCode, setterCode =
+                        match mutableType, y.DefaultValue with
+                        | AllMutable, _ 
+                        | OptionMutable, Some _ -> ProvidedProperty(n, t, getterCode = getterCode, setterCode =
                             (fun args ->
                                 match args with
                                 | this::[x] -> Expr.FieldSet(this, f, x)
                                 | _ -> failwith "Unsupported arguments to setter"))
-                        | false -> ProvidedProperty(n, t, getterCode = getterCode)
+                        | _ -> ProvidedProperty(n, t, getterCode = getterCode)
 
                     p.AddXmlDoc(x.Description)
 
@@ -139,11 +159,27 @@ module Sequence =
             | _ ->
 
                 let MAXIMUM_CONSTRUCTOR_PARAMETERS = 288
-                let isMutable = s.Elements |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS
+
+                let optional, required =
+                    s.Elements
+                    |> Array.partition (fun x ->
+                        match elementToMinMaxOccurs(x) with
+                        | ZeroOrOne -> true
+                        | _ -> false)
+
+                let mutableType =
+                    let allMutable =
+                        required |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS
+                    let optionalMutable =
+                        optional |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS || s.Elements |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS
+                    match allMutable, optionalMutable with
+                    | true, _ -> MutableType.AllMutable
+                    | false, false -> MutableType.Immutable
+                    | false, true -> MutableType.OptionMutable
 
                 let elements =
                     s.Elements
-                    |> Array.map (fun e -> elementToProperty e tryGetType isMutable)
+                    |> Array.map (fun e -> elementToProperty e tryGetType mutableType)
                     |> Array.fold Result.folder (Result.Ok [])
 
                 match elements with
