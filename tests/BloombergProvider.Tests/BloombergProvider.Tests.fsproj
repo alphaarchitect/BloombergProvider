@@ -26,14 +26,16 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
+    <PackageReference Include="QuikGraph.Graphviz" Version="2.3.0" />
     <ProjectReference Include="..\..\src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj">
       <Name>BloombergProvider.Runtime</Name>
       <Project>{7e90d6ce-a10b-4858-a5bc-41df7250cbca}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\BloombergProvider.Schema\BloombergProvider.Schema.fsproj"/>
+    <ProjectReference Include="..\..\src\BloombergProvider.Schema\BloombergProvider.Schema.fsproj" />
+    <ProjectReference Include="..\..\src\BloombergProvider.DependencyGraph\BloombergProvider.DependencyGraph.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

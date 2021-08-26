@@ -15,8 +15,10 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="4.2.2" />
-    <PackageReference Include="QuikGraph" Version="2.3.0" />
-    <PackageReference Include="QuikGraph.Graphviz" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="5.0.2" />
   </ItemGroup>
 
 </Project>

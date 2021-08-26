@@ -5,6 +5,24 @@ open NUnit.Framework
 open AlphaArchitect
 open BloombergProvider
 open BloombergProvider.Schema
+open QuikGraph.Graphviz
+open QuikGraph.Graphviz.Dot
+open QuikGraph
+
+let toGraphviz(graph: AdjacencyGraph<ComplexType, Edge<ComplexType>>) =
+    let g = GraphvizAlgorithm(graph)
+    g.CommonVertexFormat.Shape <- GraphvizVertexShape.Diamond
+    g.FormatVertex.AddHandler(fun _ args ->
+        let label = match args.Vertex with
+                    | Enumeration e -> sprintf "Enumeration: %s" e.Name
+                    | Sequence s -> sprintf "Sequence: %s" s.Name
+                    | Choice c -> sprintf "Choice: %s" c.Name
+        args.VertexFormat.Label <- label)
+    g
+
+let writeDotFile<'a>(ga: GraphvizAlgorithm<'a, Edge<'a>>, fileName: string) =
+    ga.Generate(new FileDotEngine(), fileName)
+    |> ignore
 
 [<Literal>]
 let schemaPath = __SOURCE_DIRECTORY__ + "\\schemas\\"
@@ -92,4 +110,4 @@ let ``Write Schemas As Dot Files`` () =
     |> List.iter (fun schemaPath ->
         let schema = BlpSchema.Load(schemaPath)
         let graph = DependencyGraph.create(schema.Schema)
-        DependencyGraph.writeDotFile(DependencyGraph.toGraphviz(graph), Path.Combine(Path.GetDirectoryName(schemaPath), Path.GetFileNameWithoutExtension(schemaPath))))
+        writeDotFile(toGraphviz(graph), Path.Combine(Path.GetDirectoryName(schemaPath), Path.GetFileNameWithoutExtension(schemaPath))))
