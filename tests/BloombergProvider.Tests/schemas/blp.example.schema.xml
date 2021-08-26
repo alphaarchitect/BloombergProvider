@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ServiceDefinition
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    name="blp.security" version="1.0.11.0">
+	<service name="//blp/security" version="1.0.11.0">
+		<operation name="SecurityRequest" serviceId="1">
+			<request>Requests</request>
+			<requestSelection>securityRequest</requestSelection>
+			<response>Responses</response>
+			<responseSelection>securityResponse</responseSelection>
+		</operation>
+		<publisherSupportsRecap>false</publisherSupportsRecap>
+		<authoritativeSourceSupportsRecap>true</authoritativeSourceSupportsRecap>
+		<isInfrastructureService>false</isInfrastructureService>
+		<isMetered>false</isMetered>
+		<appendMtrId>false</appendMtrId>
+		<persistentLastValueCache>false</persistentLastValueCache>
+	</service>
+	<schema>
+    <sequenceType name="UserDefinedField">
+      <description>User defined fields</description>
+      <element name="name" type="String">
+        <description>Name of the field</description>
+        <cacheable>true</cacheable>
+        <cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+      </element>
+      <element name="value" type="String">
+        <description>Value of the field</description>
+        <cacheable>true</cacheable>
+        <cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+      </element>
+    </sequenceType>
+		<sequenceType name="SecurityRequest">
+			<description>seqSecurityRequest</description>
+			<element name="name" type="String">
+				<description>Security name</description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+		</sequenceType>
+		<sequenceType name="SecurityResponse">
+			<description>seqSecurityResponse</description>
+			<element name="name" type="String">
+				<description>Security name</description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+			<element name="userDefined" type="UserDefinedField" maxOccurs="unbounded">
+				<description></description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+			<element name="currency" type="Currency" minOccurs="0"
+    maxOccurs="1">
+				<description>
+              An ISO-3 currency code.
+            </description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+		</sequenceType>
+		<choiceType name="Requests">
+			<description>choiceRequests</description>
+			<element name="securityRequest" type="SecurityRequest">
+				<description></description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+		</choiceType>
+		<choiceType name="Responses">
+			<description>choiceRequests</description>
+			<element name="securityResponse" type="SecurityResponse">
+				<description></description>
+				<cacheable>true</cacheable>
+				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+			</element>
+		</choiceType>
+		<enumerationType name="Currency" type="String">
+			<description>Supported currency enumueration</description>
+			<enumerator name="CAD">
+				<description>Canadian dollar</description>
+				<value>
+					<String>CAD</String>
+				</value>
+			</enumerator>
+			<enumerator name="USD">
+				<description>American dollar</description>
+				<value>
+					<String>USD</String>
+				</value>
+			</enumerator>
+			<enumerator name="MXN">
+				<description>Mexican Peso</description>
+				<value>
+					<String>MXN</String>
+				</value>
+			</enumerator>
+		</enumerationType>
+	</schema>
+</ServiceDefinition>

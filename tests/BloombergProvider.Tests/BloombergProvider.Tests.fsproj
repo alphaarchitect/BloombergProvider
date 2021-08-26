@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="schemas\fetchschemas.bat" />
-    <Content Include="schemas\blp.simple.schema.xml" />
+    <Content Include="schemas\blp.example.schema.xml" />
     <Content Include="schemas\blp.apiflds.schema.xml" />
     <Content Include="schemas\blp.instruments.schema.xml" />
     <Content Include="schemas\blp.irdctk3.schema.xml" />

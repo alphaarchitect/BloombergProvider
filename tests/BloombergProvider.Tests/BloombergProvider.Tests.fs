@@ -29,7 +29,7 @@ let pageDataSchemaPath = schemaPath + "blp.pageData.schema.xml"
 [<Literal>]
 let refDataSchemaPath = schemaPath + "blp.refdata.schema.xml"
 [<Literal>]
-let simpleSchemaPath = schemaPath + "blp.simple.schema.xml"
+let exampleSchemaPath = schemaPath + "blp.example.schema.xml"
 [<Literal>]
 let srcRefSchemaPath = schemaPath + "blp.srcref.schema.xml"
 [<Literal>]
@@ -45,7 +45,7 @@ type MktList = BloombergProvider<Schema=mktListSchemaPath>
 type MktVwap = BloombergProvider<Schema=mktVwapSchemaPath>
 type PageData = BloombergProvider<Schema=pageDataSchemaPath>
 type RefData = BloombergProvider<Schema=refDataSchemaPath>
-type Simple = BloombergProvider<Schema=simpleSchemaPath>
+type Example = BloombergProvider<Schema=exampleSchemaPath>
 type SrcRef = BloombergProvider<Schema=srcRefSchemaPath>
 type TaSVC = BloombergProvider<Schema=taSvcSchemaPath>
 
@@ -61,19 +61,20 @@ let schemas =
         mktVwapSchemaPath;
         pageDataSchemaPath;
         refDataSchemaPath;
-        simpleSchemaPath;
+        exampleSchemaPath;
         srcRefSchemaPath;
         taSvcSchemaPath;
     ]
 
 [<Test>]
 let ``Can access properties of generative provider`` () =
-    let s = Simple.Simple(language = Some Simple.Language.ENGLISH, properties = ("test", []), returnFieldDocumentation = false, id = ("1", []))
-    Assert.AreEqual(s.returnFieldDocumentation, false)
-    let (p, _) = s.properties
-    Assert.AreEqual(p, "test")
-    let (id, _) = s.id
-    Assert.AreEqual(id, "1")
+    let s = Example.SecurityRequest(name = "AAPL US Equity")
+    Assert.AreEqual(s.name, "AAPL US Equity")
+    let udf = Example.UserDefinedField(name = "Score", value = "1"), [Example.UserDefinedField(name = "Test", value = "Passed"); Example.UserDefinedField(name = "Core", value = "Seeds")]
+    let s = Example.SecurityResponse(currency = Some Example.Currency.CAD, userDefined = udf, name = "AAPL US Equity")
+    Assert.AreEqual(s.currency, Some Example.Currency.CAD)
+    Assert.AreEqual(s.userDefined, udf)
+    Assert.AreEqual(s.name, "AAPL US Equity")
 
 open QuikGraph.Algorithms
 [<Test>]
