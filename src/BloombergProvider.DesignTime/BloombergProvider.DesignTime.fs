@@ -16,6 +16,7 @@ module Common =
     type Label = string
     type Description = string
     type Status = Active
+    type NameSpace = string
 
 open Common
 open Microsoft.FSharp.Quotations
@@ -142,7 +143,7 @@ module Sequence =
             ElementError.UnknownStatus(x.Name, x.Status.Value)
             |> Error
 
-    let createType (s: BlpSchema.SequenceType) (assembly: Assembly) nameSpace (tryGetType: string -> option<Type>) =
+    let createType (s: BlpSchema.SequenceType) (assembly: Assembly) (nameSpace: NameSpace) (tryGetType: string -> option<Type>) =
         match (s.Status |> Option.map Union.fromString<Status>) with
         | Some None -> UnknownStatus(s.Name, s.Status.Value) |> Error
         | None
@@ -227,7 +228,7 @@ module Choice =
         | UnknownType of Name: Name * Type: string
         | UnknownStatus of Name: Name * Status: string
 
-    let createType (c: BlpSchema.ChoiceType) (assembly: Assembly) nameSpace =
+    let createType (c: BlpSchema.ChoiceType) (assembly: Assembly) (nameSpace: NameSpace) =
         let providedChoiceType =
             ProvidedTypeDefinition(
                 assembly,
@@ -289,12 +290,13 @@ module Enumeration =
             EnumeratorError.UnknownStatus(x.Name, x.Status.Value)
             |> Error
 
-    let private effectiveEnumerationType
-        (e: BlpSchema.EnumerationType)
+    let internal effectiveEnumerationType
+        (name: Name)
+        (enumerationType: EnumerationType)
         (enumerators: EnumerationField list)
         =
-        match Union.fromString<EnumerationType> (e.Type) with
-        | Some EnumerationType.String ->
+        match enumerationType with
+        | EnumerationType.String ->
             enumerators
             |> List.map (fun x ->
                 match x with
@@ -302,8 +304,8 @@ module Enumeration =
                 | EnumerationField.Int32 (name, _, _) -> Error <| TypeInconsistent(name))
             |> List.fold Result.folder (Result.Ok [])
             |> Result.map (Map.ofList >> Enumeration.String)
-            |> Result.mapError (fun xs -> Enumerator(e.Name, xs))
-        | Some EnumerationType.Int32 ->
+            |> Result.mapError (fun xs -> Enumerator(name, xs))
+        | EnumerationType.Int32 ->
             enumerators
             |> List.map (fun x ->
                 match x with
@@ -311,10 +313,50 @@ module Enumeration =
                 | EnumerationField.Int32 (name, value, description) -> Ok ((name, value), description))
             |> List.fold Result.folder (Result.Ok [])
             |> Result.map (Map.ofList >> Enumeration.Int32)
-            |> Result.mapError (fun xs -> Enumerator(e.Name, xs))
-        | None -> Error <| UnknownType(e.Name, e.Type)
+            |> Result.mapError (fun xs -> Enumerator(name, xs))
 
-    let createType (e: BlpSchema.EnumerationType) (assembly: Assembly) nameSpace =
+    let internal createEnumerationType (assembly: Assembly) (nameSpace: string) (name: Name) (enumerationType: EnumerationType) (description: Description) (enumerators: list<EnumerationField>) =
+        let providedEnumType =
+            ProvidedTypeDefinition(
+                assembly,
+                nameSpace,
+                name,
+                baseType = Some typeof<Enum>,
+                hideObjectMethods = true,
+                isErased = false
+            )
+
+        providedEnumType.AddXmlDoc(description)
+
+        effectiveEnumerationType name enumerationType enumerators
+        |> Result.map
+            (fun x ->
+                let enumerators =
+                    match x with
+                    | Enumeration.Int32 xs ->
+                        xs
+                        |> Map.toList
+                        |> List.map
+                            (fun ((label, value), description) ->
+                                ProvidedField.Literal(label, providedEnumType, value), description)
+                    | Enumeration.String xs ->
+                        xs
+                        |> Map.toList
+                        |> List.map
+                            (fun (label, description) ->
+                                ProvidedField.Literal(label, providedEnumType, label), description)
+                    |> List.map
+                        (fun (t, description) ->
+                            match description with
+                            | "" -> t
+                            | _ ->
+                                t.AddXmlDoc(description)
+                                t)
+
+                providedEnumType.AddMembers enumerators
+                providedEnumType)
+
+    let createType (e: BlpSchema.EnumerationType) (assembly: Assembly) (nameSpace: NameSpace) =
         match e.Status |> Option.map Union.fromString<Status> with
         | Some None ->
             EnumerationError.UnknownStatus(e.Name, e.Status.Value)
@@ -332,55 +374,16 @@ module Enumeration =
             | [||] -> Error <| Empty(e.Name)
             | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(e.Name, duplicates)
             | _ ->
-                let providedEnumType =
-                    ProvidedTypeDefinition(
-                        assembly,
-                        nameSpace,
-                        e.Name,
-                        baseType = Some typeof<Enum>,
-                        hideObjectMethods = true,
-                        isErased = false
-                    )
-
-                providedEnumType.AddXmlDoc(e.Description)
-
-                let enumerators =
-                    e.Enumerators
-                    |> Array.map schemaEnumeratorToEnumerationField
-                    |> Array.fold Result.folder (Result.Ok [])
-
-                let enumeration =
-                    match enumerators with
-                    | Ok enums -> effectiveEnumerationType e enums
-                    | Error es -> Enumerator(e.Name, es) |> Error
-
-                enumeration
-                |> Result.map
-                    (fun x ->
-                        let enumerators =
-                            match x with
-                            | Enumeration.Int32 xs ->
-                                xs
-                                |> Map.toList
-                                |> List.map
-                                    (fun ((label, value), description) ->
-                                        ProvidedField.Literal(label, providedEnumType, value), description)
-                            | Enumeration.String xs ->
-                                xs
-                                |> Map.toList
-                                |> List.map
-                                    (fun (label, description) ->
-                                        ProvidedField.Literal(label, providedEnumType, label), description)
-                            |> List.map
-                                (fun (t, description) ->
-                                    match description with
-                                    | "" -> t
-                                    | _ ->
-                                        t.AddXmlDoc(description)
-                                        t)
-
-                        providedEnumType.AddMembers enumerators
-                        providedEnumType)
+                e.Enumerators
+                |> Array.map schemaEnumeratorToEnumerationField
+                |> Array.fold Result.folder (Result.Ok [])
+                |> Result.mapError (fun xs -> EnumerationError.Enumerator(e.Name, xs))
+                |> Result.bind (fun enumerators ->
+                    match Union.fromString<EnumerationType>(e.Type) with
+                    | Some x -> x |> Ok
+                    | None -> UnknownType(e.Name, e.Type) |> Error
+                    |> Result.bind (fun enumerationType ->
+                        createEnumerationType assembly nameSpace e.Name enumerationType e.Description enumerators))
 
 type TypeError =
     | EnumerationError of Enumeration.EnumerationError
