@@ -46,10 +46,14 @@ module Sequence =
         | ZeroOrMore
         | Unknown of MinOccurs: string * MaxOccurs: string
 
-    type MutableType =
+    type Mutability =
         | AllMutable
         | OptionMutable
         | Immutable
+
+    type Parameter =
+        | Optional
+        | Required
 
     let private elementToMinMaxOccurs (x: BlpSchema.Element) =
         match x.MinOccurs |> Option.defaultValue "1", x.MaxOccurs |> Option.defaultValue "1" with
@@ -59,6 +63,39 @@ module Sequence =
         | "0", "unbounded" -> ZeroOrMore
         | min, max -> Unknown(MinOccurs = min, MaxOccurs = max)
 
+    let private primitiveTypeToType = function
+        | Boolean -> typeof<bool>
+        | Char -> typeof<char>
+        (* TODO: YodaTime *)
+        | Date
+        | Datetime
+        | Time -> typeof<DateTime>
+        | Float32 -> typeof<float32>
+        | Float64 -> typeof<double>
+        | Int32 -> typeof<int32>
+        | Int64 -> typeof<int64>
+        | String -> typeof<string>
+
+    let internal createImmutableProperty, internal createMutableProperty  =
+        let inline createAutoProperty (isMutable: bool) (name: string) (type': Type) =
+            let field = ProvidedField(name, type')
+            let getterCode = (fun args ->
+                match args with
+                | this::[] -> Expr.FieldGet(this, field)
+                | _ -> failwith "Unsupported arguments to getter")
+            let property =
+                match isMutable with
+                | true ->
+                    let setterCode = (fun args ->
+                        match args with
+                        | this::[x] -> Expr.FieldSet(this, field, x)
+                        | _ -> failwith "Unsupported arguments to setter")
+                    ProvidedProperty(name, type', getterCode = getterCode, setterCode = setterCode)
+                | false ->
+                    ProvidedProperty(name, type', getterCode = getterCode)
+            field, property
+        (false |> createAutoProperty), (true |> createAutoProperty)
+
     let private elementToProperty (x: BlpSchema.Element) tryGetType mutableType =
         match x.Status |> Option.map Union.fromString<Status> with
         | None
@@ -66,21 +103,7 @@ module Sequence =
             let propertyType =
                 let t =
                     match Union.fromString<PrimitiveType> (x.Type) with
-                    | Some p ->
-                        let p' =
-                            match p with
-                            | Boolean -> typeof<bool>
-                            | Char -> typeof<char>
-                            (* TODO: YodaTime *)
-                            | Date
-                            | Datetime
-                            | Time -> typeof<DateTime>
-                            | Float32 -> typeof<float32>
-                            | Float64 -> typeof<double>
-                            | Int32 -> typeof<int32>
-                            | Int64 -> typeof<int64>
-                            | String -> typeof<string>
-                        Result.Ok p'
+                    | Some p -> primitiveTypeToType p |> Result.Ok
                     | None ->
                         match tryGetType (x.Type) with
                         | Some t -> Result.Ok t
@@ -89,50 +112,42 @@ module Sequence =
                 t
                 |> Result.bind (fun t' ->
                         match elementToMinMaxOccurs(x) with
-                        | One -> Ok {| DefaultValue = None; Type = t' |}
+                        | One -> (t', Required) |> Ok
                         | ZeroOrOne ->
-                            {| DefaultValue = Some None
-                               Type = typedefof<option<_>>.MakeGenericType (t') |}
+                            (typedefof<option<_>>.MakeGenericType (t'), Optional)
                             |> Ok
                         | OneOrMore ->
-                            {| DefaultValue = None
-                               Type = typedefof<_ * _>.MakeGenericType (t', typedefof<list<_>>.MakeGenericType t') |}
+                            (typedefof<_ * _>.MakeGenericType (t', typedefof<list<_>>.MakeGenericType t'), Required)
                             |> Ok
                         | ZeroOrMore ->
-                            {| DefaultValue = None
-                               Type = typedefof<list<_>>.MakeGenericType (t') |}
+                            (typedefof<list<_>>.MakeGenericType (t'), Required)
                             |> Ok
                         | Unknown (min, max) -> UnknownMinMaxOccurs(MinOccurs = min, MaxOccurs = max) |> Error)
 
             propertyType
             |> Result.map
-                (fun y ->
-                    let n = x.Name
-                    let t = y.Type
+                (fun (type', parameter) ->
+                    let f =
+                        match parameter with
+                        | Required
+                        | Optional -> ProvidedField(x.Name, type')
 
-                    let f = ProvidedField(n, t)
+                    let f, p =
+                        match mutableType, parameter with
+                        | AllMutable, _
+                        | OptionMutable, Optional ->
+                            createMutableProperty x.Name type'
+                        | _, Required
+                        | _, Optional ->
+                            createImmutableProperty x.Name type'
 
                     let c =
-                        match mutableType, y.DefaultValue with
+                        match mutableType, parameter with
                         | AllMutable, _
-                        | OptionMutable, Some _ -> None
-                        | OptionMutable, None
-                        | Immutable, None -> ProvidedParameter(n, t) |> Some
-                        | _, Some o -> ProvidedParameter(n, t, optionalValue = o) |> Some
-
-                    let p =
-                        let getterCode = (fun args ->
-                            match args with
-                            | this::[] -> Expr.FieldGet(this, f)
-                            | _ -> failwith "Unsupported arguments to getter")
-                        match mutableType, y.DefaultValue with
-                        | AllMutable, _ 
-                        | OptionMutable, Some _ -> ProvidedProperty(n, t, getterCode = getterCode, setterCode =
-                            (fun args ->
-                                match args with
-                                | this::[x] -> Expr.FieldSet(this, f, x)
-                                | _ -> failwith "Unsupported arguments to setter"))
-                        | _ -> ProvidedProperty(n, t, getterCode = getterCode)
+                        | OptionMutable, Optional -> None
+                        | OptionMutable, Required
+                        | Immutable, Required -> ProvidedParameter(x.Name, type') |> Some
+                        | _, Optional -> ProvidedParameter(x.Name, type', optionalValue = None) |> Some
 
                     p.AddXmlDoc(x.Description)
 
@@ -174,9 +189,9 @@ module Sequence =
                     let optionalMutable =
                         optional |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS || s.Elements |> Array.length > MAXIMUM_CONSTRUCTOR_PARAMETERS
                     match allMutable, optionalMutable with
-                    | true, _ -> MutableType.AllMutable
-                    | false, false -> MutableType.Immutable
-                    | false, true -> MutableType.OptionMutable
+                    | true, _ -> Mutability.AllMutable
+                    | false, false -> Mutability.Immutable
+                    | false, true -> Mutability.OptionMutable
 
                 let elements =
                     s.Elements
@@ -209,8 +224,7 @@ module Sequence =
                                         match xs with
                                         | [] -> Expr.Value(())
                                         | x :: xs -> List.fold (fun e x -> Expr.Sequential(e, x)) x xs)
-                                | _ -> failwith "wrong ctor parameters"
-                    )
+                                | _ -> failwith "wrong ctor parameters")
 
                     es
                     |> List.iter
@@ -220,27 +234,6 @@ module Sequence =
 
                     providedSequenceType |> Ok
                 | Error es -> Element(s.Name, es) |> Error
-
-module Choice =
-    type ChoiceError =
-        | Empty of Name: Name
-        | Duplicates of Name: Name * list<Label>
-        | UnknownType of Name: Name * Type: string
-        | UnknownStatus of Name: Name * Status: string
-
-    let createType (c: BlpSchema.ChoiceType) (assembly: Assembly) (nameSpace: NameSpace) =
-        let providedChoiceType =
-            ProvidedTypeDefinition(
-                assembly,
-                nameSpace,
-                c.Name,
-                baseType = Some typeof<obj>,
-                hideObjectMethods = false,
-                isErased = false
-            )
-
-        providedChoiceType
-        |> Result.Ok
 
 module Enumeration =
     type EnumerationType =
@@ -316,45 +309,59 @@ module Enumeration =
             |> Result.mapError (fun xs -> Enumerator(name, xs))
 
     let internal createEnumerationType (assembly: Assembly) (nameSpace: string) (name: Name) (enumerationType: EnumerationType) (description: Description) (enumerators: list<EnumerationField>) =
-        let providedEnumType =
-            ProvidedTypeDefinition(
-                assembly,
-                nameSpace,
-                name,
-                baseType = Some typeof<Enum>,
-                hideObjectMethods = true,
-                isErased = false
-            )
+        let duplicates =
+            enumerators
+            |> Seq.countBy (fun x ->
+                match x with
+                | String (n, _)
+                | Int32 (n, _, _) -> n)
+            |> List.ofSeq
+            |> List.filter (fun (_, i) -> i > 1)
+            |> List.map fst
 
-        providedEnumType.AddXmlDoc(description)
+        match enumerators with
+        | [] -> Error <| Empty(name)
+        | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(name, duplicates)
+        | _ ->
+            let providedEnumType =
+                ProvidedTypeDefinition(
+                    assembly,
+                    nameSpace,
+                    name,
+                    baseType = Some typeof<Enum>,
+                    hideObjectMethods = true,
+                    isErased = false
+                )
 
-        effectiveEnumerationType name enumerationType enumerators
-        |> Result.map
-            (fun x ->
-                let enumerators =
-                    match x with
-                    | Enumeration.Int32 xs ->
-                        xs
-                        |> Map.toList
+            providedEnumType.AddXmlDoc(description)
+
+            effectiveEnumerationType name enumerationType enumerators
+            |> Result.map
+                (fun x ->
+                    let enumerators =
+                        match x with
+                        | Enumeration.Int32 xs ->
+                            xs
+                            |> Map.toList
+                            |> List.map
+                                (fun ((label, value), description) ->
+                                    ProvidedField.Literal(label, providedEnumType, value), description)
+                        | Enumeration.String xs ->
+                            xs
+                            |> Map.toList
+                            |> List.map
+                                (fun (label, description) ->
+                                    ProvidedField.Literal(label, providedEnumType, label), description)
                         |> List.map
-                            (fun ((label, value), description) ->
-                                ProvidedField.Literal(label, providedEnumType, value), description)
-                    | Enumeration.String xs ->
-                        xs
-                        |> Map.toList
-                        |> List.map
-                            (fun (label, description) ->
-                                ProvidedField.Literal(label, providedEnumType, label), description)
-                    |> List.map
-                        (fun (t, description) ->
-                            match description with
-                            | "" -> t
-                            | _ ->
-                                t.AddXmlDoc(description)
-                                t)
+                            (fun (t, description) ->
+                                match description with
+                                | "" -> t
+                                | _ ->
+                                    t.AddXmlDoc(description)
+                                    t)
 
-                providedEnumType.AddMembers enumerators
-                providedEnumType)
+                    providedEnumType.AddMembers enumerators
+                    providedEnumType)
 
     let createType (e: BlpSchema.EnumerationType) (assembly: Assembly) (nameSpace: NameSpace) =
         match e.Status |> Option.map Union.fromString<Status> with
@@ -363,27 +370,97 @@ module Enumeration =
             |> Error
         | None
         | Some (Some Active) ->
-            let duplicates =
-                e.Enumerators
-                |> Seq.countBy (fun x -> x.Name)
-                |> List.ofSeq
-                |> List.filter (fun (_, i) -> i > 1)
-                |> List.map fst
+            e.Enumerators
+            |> Array.map schemaEnumeratorToEnumerationField
+            |> Array.fold Result.folder (Result.Ok [])
+            |> Result.mapError (fun xs -> EnumerationError.Enumerator(e.Name, xs))
+            |> Result.bind (fun enumerators ->
+                match Union.fromString<EnumerationType>(e.Type) with
+                | Some x -> x |> Ok
+                | None -> UnknownType(e.Name, e.Type) |> Error
+                |> Result.bind (fun enumerationType ->
+                    createEnumerationType assembly nameSpace e.Name enumerationType e.Description enumerators))
 
-            match e.Enumerators with
-            | [||] -> Error <| Empty(e.Name)
-            | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(e.Name, duplicates)
-            | _ ->
-                e.Enumerators
-                |> Array.map schemaEnumeratorToEnumerationField
-                |> Array.fold Result.folder (Result.Ok [])
-                |> Result.mapError (fun xs -> EnumerationError.Enumerator(e.Name, xs))
-                |> Result.bind (fun enumerators ->
-                    match Union.fromString<EnumerationType>(e.Type) with
-                    | Some x -> x |> Ok
-                    | None -> UnknownType(e.Name, e.Type) |> Error
-                    |> Result.bind (fun enumerationType ->
-                        createEnumerationType assembly nameSpace e.Name enumerationType e.Description enumerators))
+
+module Choice =
+    type ElementError =
+        | UnknownType of Name: Name * TypeName: string
+
+    type ChoiceError =
+        | Empty of Name: Name
+        | Enumeration of Enumeration.EnumerationError
+        | UnknownStatus of Name: Name * Status: string
+        | Element of Name: Name * list<ElementError>
+
+    type ChoiceType =
+        {
+            Enum: ProvidedTypeDefinition
+            Object: ProvidedTypeDefinition
+        }
+
+    let createType (c: BlpSchema.ChoiceType) (assembly: Assembly) (nameSpace: NameSpace) (tryGetType: string -> option<Type>) =
+        let providedChoiceType =
+            ProvidedTypeDefinition(
+                assembly,
+                nameSpace,
+                c.Name,
+                baseType = Some typeof<obj>,
+                hideObjectMethods = false,
+                isErased = false
+            )
+
+        match c.Status |> Option.map Union.fromString<Status> with
+        | Some None ->
+            ChoiceError.UnknownStatus(c.Name, c.Status.Value)
+            |> Error
+        | None
+        | Some (Some Active) ->
+            let enumerators =
+                c.Elements
+                |> List.ofArray
+                |> List.map (fun x ->
+                    Enumeration.EnumerationField.String(x.Name, x.Description))
+            let enumName = sprintf "%sType" c.Name
+            Enumeration.createEnumerationType assembly nameSpace enumName Enumeration.EnumerationType.String c.Description enumerators
+            |> Result.mapError Enumeration
+            |> Result.bind (fun enum ->
+                let enumField, property = Sequence.createImmutableProperty enumName enum
+                providedChoiceType.AddMember enumField
+                providedChoiceType.AddMember property
+
+                let es =
+                    c.Elements
+                    |> Array.map (fun x ->
+                        match tryGetType (x.Type) with
+                        | Some t ->
+                            let field, property = Sequence.createImmutableProperty x.Name t
+                            providedChoiceType.AddMember field
+                            providedChoiceType.AddMember property
+                            field |> Result.Ok
+                        | None -> UnknownType (x.Name, x.Type) |> Result.Error)
+                    |> Array.fold Result.folder (Result.Ok [])
+
+                es
+                |> Result.mapError (fun xs -> ChoiceError.Element(c.Name, xs))
+                |> Result.map (fun xs ->
+                    xs
+                    |> List.iter (fun field ->
+                        let parameter = ProvidedParameter(field.Name, field.FieldType)
+                        providedChoiceType.AddMember
+                        <| ProvidedConstructor(
+                            [parameter],
+                            invokeCode =
+                                fun args ->
+                                    match args with
+                                    | this :: [arg] ->
+                                        let setValue = Expr.FieldSet(this, field, arg)
+                                        let enumField = Expr.FieldSet(this, enumField, Expr.FieldGet(enum.GetField(field.Name)))
+                                        Expr.Sequential(enumField, setValue)
+                                    | _ -> failwith "wrong ctor parameters"))
+                    {
+                        Enum = enum
+                        Object = providedChoiceType
+                    }))
 
 type TypeError =
     | EnumerationError of Enumeration.EnumerationError
@@ -417,32 +494,38 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
             )
 
         let dependencyOrder =
-            DependencyGraph.create(schema.Schema).TopologicalSort() |> Array.ofSeq |> Array.rev
+            DependencyGraph.create(schema.Schema).TopologicalSort() |> List.ofSeq |> List.rev
 
         let mutable typeCache = Map.empty<string, Type>
         
         let types =
             dependencyOrder
-            |> Array.map (fun x ->
+            |> List.map (fun x ->
                 let typeRef =
                     match x with
                     | Sequence s ->
                         Sequence.createType s tempAssembly nameSpace typeCache.TryFind
+                        |> Result.map (fun x -> [x])
                         |> Result.mapError TypeError.SequenceError
                     | Choice c ->
-                        Choice.createType c tempAssembly nameSpace
+                        Choice.createType c tempAssembly nameSpace typeCache.TryFind
+                        |> Result.map (fun x -> [x.Enum; x.Object])
                         |> Result.mapError TypeError.ChoiceError
                     | Enumeration e ->
                         Enumeration.createType e tempAssembly nameSpace
+                        |> Result.map (fun x -> [x])
                         |> Result.mapError TypeError.EnumerationError
 
                 match typeRef with
-                | Result.Ok x ->
+                | Result.Ok xs ->
+                    (* Depends on the ordering scheme above, we are adding the choice object not enum *)
+                    let x = List.last xs
                     typeCache <- typeCache |> Map.add x.Name (x :> Type)
                 | _ -> ()
 
                 typeRef)
-            |> Array.fold Result.folder (Result.Ok [])
+            |> List.fold Result.folder (Result.Ok [])
+            |> Result.map List.concat
 
         match types with
         | Ok e -> rootType.AddMembers e
