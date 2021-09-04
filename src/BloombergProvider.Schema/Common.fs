@@ -4,15 +4,15 @@ open Microsoft.FSharp.Reflection
 open System.Reflection
 
 module Union =
-    let fromString<'a> (s: string) =
+    let fromString<'a> (string': string) =
         match FSharpType.GetUnionCases(typeof<'a>, BindingFlags.Public ||| BindingFlags.NonPublic)
-              |> Array.filter (fun case -> case.Name = s) with
+              |> Array.filter (fun case -> case.Name = string') with
         | [| case |] -> Some(FSharpValue.MakeUnion(case, [||]) :?> 'a)
         | _ -> None
 
 module Result =
-    let isOk x =
-        match x with
+    let isOk result =
+        match result with
         | Ok _ -> true
         | Error _ -> false
 

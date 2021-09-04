@@ -7,9 +7,9 @@ module DependencyGraph =
     
     let create (schema: BlpSchema.Schema) =
         let typeArray =
-            [|schema.EnumerationTypes |> Array.map (fun x -> x.Name, ComplexType.Enumeration x);
-              schema.SequenceTypes |> Array.map (fun x -> x.Name, ComplexType.Sequence x);
-              schema.ChoiceTypes |> Array.map (fun x -> x.Name, ComplexType.Choice x)|]
+            [|schema.EnumerationTypes |> Array.map (fun enumeration -> enumeration.Name, ComplexType.Enumeration enumeration);
+              schema.SequenceTypes |> Array.map (fun sequence -> sequence.Name, ComplexType.Sequence sequence);
+              schema.ChoiceTypes |> Array.map (fun choice -> choice.Name, ComplexType.Choice choice)|]
             |> Array.concat
 
         let graph = QuikGraph.AdjacencyGraph()
@@ -23,21 +23,21 @@ module DependencyGraph =
             |> Map.ofArray
 
         schema.SequenceTypes
-        |> Array.collect (fun s ->
-            s.Elements
-            |> Array.map (fun e -> e.Type)
+        |> Array.collect (fun sequence ->
+            sequence.Elements
+            |> Array.map (fun element -> element.Type)
             |> Array.distinct
-            |> Array.filter (fun t -> Union.fromString<PrimitiveType>(t).IsNone)
-            |> Array.map (fun t -> Edge(ComplexType.Sequence s, typeMap.[t])))
+            |> Array.filter (fun type' -> Union.fromString<PrimitiveType>(type').IsNone)
+            |> Array.map (fun type' -> Edge(ComplexType.Sequence sequence, typeMap.[type'])))
         |> graph.AddVerticesAndEdgeRange
         |> ignore
 
         schema.ChoiceTypes
-        |> Array.collect (fun c ->
-            c.Elements
-            |> Array.map (fun e -> e.Type)
+        |> Array.collect (fun choice ->
+            choice.Elements
+            |> Array.map (fun element -> element.Type)
             |> Array.distinct
-            |> Array.map (fun t -> Edge(ComplexType.Choice c, typeMap.[t])))
+            |> Array.map (fun type' -> Edge(ComplexType.Choice choice, typeMap.[type'])))
         |> graph.AddVerticesAndEdgeRange
         |> ignore
 
