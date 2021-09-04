@@ -34,8 +34,12 @@ module Sequence =
         | UnknownStatus of Name: Name * Status: string
         | Element of Name: Name * list<ElementError>
 
+        type Parameter =
+        | Optional of InnerType: Type
+        | Required
+
     type Property =
-        { Parameter: option<ProvidedParameter>
+        { Parameter: option<ProvidedParameter * Parameter>
           Field: ProvidedField
           Property: ProvidedProperty }
 
@@ -50,10 +54,6 @@ module Sequence =
         | AllMutable
         | OptionMutable
         | Immutable
-
-    type Parameter =
-        | Optional
-        | Required
 
     let private elementToMinMaxOccurs (x: BlpSchema.Element) =
         match x.MinOccurs |> Option.defaultValue "1", x.MaxOccurs |> Option.defaultValue "1" with
@@ -79,6 +79,7 @@ module Sequence =
     let internal createImmutableProperty, internal createMutableProperty  =
         let inline createAutoProperty (isMutable: bool) (name: string) (type': Type) =
             let field = ProvidedField(name, type')
+            field.SetFieldAttributes(FieldAttributes.Private)
             let getterCode = (fun args ->
                 match args with
                 | this::[] -> Expr.FieldGet(this, field)
@@ -114,7 +115,7 @@ module Sequence =
                         match elementToMinMaxOccurs(x) with
                         | One -> (t', Required) |> Ok
                         | ZeroOrOne ->
-                            (typedefof<option<_>>.MakeGenericType (t'), Optional)
+                            (typedefof<option<_>>.MakeGenericType (t'), Optional(t'))
                             |> Ok
                         | OneOrMore ->
                             (typedefof<_ * _>.MakeGenericType (t', typedefof<list<_>>.MakeGenericType t'), Required)
@@ -127,27 +128,22 @@ module Sequence =
             propertyType
             |> Result.map
                 (fun (type', parameter) ->
-                    let f =
-                        match parameter with
-                        | Required
-                        | Optional -> ProvidedField(x.Name, type')
-
                     let f, p =
                         match mutableType, parameter with
                         | AllMutable, _
-                        | OptionMutable, Optional ->
+                        | OptionMutable, Optional _ ->
                             createMutableProperty x.Name type'
                         | _, Required
-                        | _, Optional ->
+                        | _, Optional _ ->
                             createImmutableProperty x.Name type'
 
                     let c =
                         match mutableType, parameter with
                         | AllMutable, _
-                        | OptionMutable, Optional -> None
+                        | OptionMutable, Optional _-> None
                         | OptionMutable, Required
-                        | Immutable, Required -> ProvidedParameter(x.Name, type') |> Some
-                        | _, Optional -> ProvidedParameter(x.Name, type', optionalValue = None) |> Some
+                        | Immutable, Required -> (ProvidedParameter(x.Name, type'), parameter) |> Some
+                        | _, Optional _ -> (ProvidedParameter(x.Name, type', optionalValue = None), parameter) |> Some
 
                     p.AddXmlDoc(x.Description)
 
@@ -213,7 +209,8 @@ module Sequence =
                     providedSequenceType.AddMember
                     <| ProvidedConstructor(
                         es
-                        |> List.choose ((fun x -> x.Parameter) >> id),
+                        |> List.choose ((fun x -> x.Parameter) >> id)
+                        |> List.map fst,
                         invokeCode =
                             fun args ->
                                 match args with
@@ -433,10 +430,10 @@ module Choice =
                     |> Array.map (fun x ->
                         match tryGetType (x.Type) with
                         | Some t ->
-                            let field, property = Sequence.createImmutableProperty x.Name t
+                            let field, property = Sequence.createImmutableProperty x.Name (typedefof<option<_>>.MakeGenericType(t))
                             providedChoiceType.AddMember field
                             providedChoiceType.AddMember property
-                            field |> Result.Ok
+                            (t, field) |> Result.Ok
                         | None -> UnknownType (x.Name, x.Type) |> Result.Error)
                     |> Array.fold Result.folder (Result.Ok [])
 
@@ -444,6 +441,9 @@ module Choice =
                 |> Result.mapError (fun xs -> ChoiceError.Element(c.Name, xs))
                 |> Result.map (fun xs ->
                     xs
+                    |> List.map snd
+                    (* TODO: Allow declaring constructors with identical arity, current blocker is the inability to create a private constructor *)
+                    |> List.distinctBy (fun x -> x.FieldType.Name)
                     |> List.iter (fun field ->
                         let parameter = ProvidedParameter(field.Name, field.FieldType)
                         providedChoiceType.AddMember

@@ -94,6 +94,13 @@ let ``Can access properties of generative provider`` () =
     Assert.AreEqual(s.userDefined, udf)
     Assert.AreEqual(s.name, "AAPL US Equity")
 
+[<Test>]
+let ``Can create choicetype of generative provider`` () =
+    let c = Example.Responses(Example.Currency.CAD)
+    Assert.AreEqual(c.currency, Example.Currency.CAD)
+    Assert.AreEqual(c.ResponsesType, Example.ResponsesType.currency)
+    Assert.AreEqual(c.securityResponse, None)
+
 open QuikGraph.Algorithms
 [<Test>]
 let ``Schemas are DAG`` () =

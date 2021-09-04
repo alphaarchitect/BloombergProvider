@@ -74,6 +74,11 @@
 				<cacheable>true</cacheable>
 				<cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
 			</element>
+      <element name="currency" type="Currency">
+        <description></description>
+        <cacheable>true</cacheable>
+        <cachedOnlyOnInitialPaint>false</cachedOnlyOnInitialPaint>
+      </element>
 		</choiceType>
 		<enumerationType name="Currency" type="String">
 			<description>Supported currency enumueration</description>
