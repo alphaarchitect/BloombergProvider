@@ -96,7 +96,7 @@ let ``Can access properties of generative provider`` () =
 
 [<Test>]
 let ``Can create choicetype of generative provider`` () =
-    let c = Example.Responses(Example.Currency.CAD)
+    let c = Example.Responses(Some Example.Currency.CAD)
     Assert.AreEqual(c.currency, Example.Currency.CAD)
     Assert.AreEqual(c.ResponsesType, Example.ResponsesType.currency)
     Assert.AreEqual(c.securityResponse, None)
