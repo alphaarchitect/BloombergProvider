@@ -12,11 +12,23 @@ open System
 open System.Reflection
 
 module Common =
-    type Name = string
-    type Label = string
-    type Description = string
+    type Name = private Name of string
+    module Name =
+        let ofString = Name
+        let toString (Name name) = name
+    type Label = private Label of string
+    module Label =
+        let ofString = Label
+        let toString (Label label) = label
+    type Description = private Description of string
+    module Description =
+        let ofString = Description
+        let toString (Description description) = description
     type Status = Active
-    type NameSpace = string
+    type NameSpace = private NameSpace of string
+    module NameSpace =
+        let ofString = NameSpace
+        let toString (NameSpace nameSpace) = nameSpace
 
 open Common
 open Microsoft.FSharp.Quotations
@@ -87,6 +99,7 @@ module Sequence =
 
     let internal createImmutableProperty, internal createMutableProperty  =
         let inline createAutoProperty (isMutable: bool) (name: Name) (propertyType: Type) =
+            let name = Name.toString name
             let field = ProvidedField(name, propertyType)
             field.SetFieldAttributes(FieldAttributes.Private)
             let getterCode = (fun (Singleton this) -> Expr.FieldGet(this, field))
@@ -131,6 +144,7 @@ module Sequence =
                             |> Ok
                         | Unknown (min, max) -> UnknownMinMaxOccurs(MinOccurs = min, MaxOccurs = max) |> Error)
 
+            let name = Name.ofString element.Name
             propertyType
             |> Result.map
                 (fun (propertyType, parameter) ->
@@ -138,10 +152,10 @@ module Sequence =
                         match mutableType, parameter with
                         | Mutable, _
                         | OptionMutable, Optional _ ->
-                            createMutableProperty element.Name propertyType
+                            createMutableProperty name propertyType
                         | _, Required
                         | _, Optional _ ->
-                            createImmutableProperty element.Name propertyType
+                            createImmutableProperty name propertyType
 
                     let parameter =
                         match mutableType, parameter with
@@ -157,12 +171,13 @@ module Sequence =
                       Field = field
                       Property = property })
         | Some None ->
-            ElementError.UnknownStatus(element.Name, element.Status.Value)
+            ElementError.UnknownStatus(Label.ofString element.Name, element.Status.Value)
             |> Error
 
     let createType (sequence: BlpSchema.SequenceType) (assembly: Assembly) (nameSpace: NameSpace) (tryGetType: string -> option<Type>) =
+        let name = Name.ofString sequence.Name
         match (sequence.Status |> Option.map Union.fromString<Status>) with
-        | Some None -> UnknownStatus(sequence.Name, sequence.Status.Value) |> Error
+        | Some None -> UnknownStatus(name, sequence.Status.Value) |> Error
         | None
         | Some (Some Active) ->
             let duplicates =
@@ -170,10 +185,10 @@ module Sequence =
                 |> Seq.countBy (fun element -> element.Name)
                 |> List.ofSeq
                 |> List.filter (fun (_, count) -> count > 1)
-                |> List.map fst
+                |> List.map (fst >> Label.ofString)
 
             match sequence.Elements with
-            | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(sequence.Name, duplicates)
+            | _ when not (duplicates |> List.isEmpty) -> Error <| Duplicates(name, duplicates)
             | _ ->
 
                 let MAXIMUM_CONSTRUCTOR_PARAMETERS = 288
@@ -205,7 +220,7 @@ module Sequence =
                     let providedSequenceType =
                         ProvidedTypeDefinition(
                             assembly,
-                            nameSpace,
+                            NameSpace.toString nameSpace,
                             sequence.Name,
                             baseType = Some typeof<obj>,
                             hideObjectMethods = false,
@@ -236,7 +251,7 @@ module Sequence =
                                                               element.Property :> MemberInfo ])
 
                     providedSequenceType |> Ok
-                | Error errors -> Element(sequence.Name, errors) |> Error
+                | Error errors -> Element(name, errors) |> Error
 
 module Enumeration =
     type EnumerationType =
@@ -266,24 +281,26 @@ module Enumeration =
         | String of Label: Label * Description: Description
         | Int32 of Label: Label * Value: int32 * Description: Description
 
-    let private schemaEnumeratorToEnumerationField (emumerator: BlpSchema.Enumerator) =
-        match (emumerator.Status |> Option.map Union.fromString<Status>) with
+    let private schemaEnumeratorToEnumerationField (enumerator: BlpSchema.Enumerator) =
+        let label = Label.ofString enumerator.Name
+        match (enumerator.Status |> Option.map Union.fromString<Status>) with
         | None
         | Some (Some Active) ->
-            match emumerator.Value.Int32, emumerator.Value.String with
+            let description = Description.ofString enumerator.Description
+            match enumerator.Value.Int32, enumerator.Value.String with
             | Some value, None ->
                 try
                     Ok
-                    <| EnumerationField.Int32(Label = emumerator.Name, Value = int32 value, Description = emumerator.Description)
-                with :? FormatException -> Int32Format(emumerator.Name, value) |> Error
-            | None, Some value when value = emumerator.Name || (value = "THAIL" && emumerator.Name = "THAI") ->
+                    <| EnumerationField.Int32(Label = label, Value = int32 value, Description = description)
+                with :? FormatException -> Int32Format(label, value) |> Error
+            | None, Some value when value = enumerator.Name || (value = "THAIL" && enumerator.Name = "THAI") ->
                 Ok
-                <| EnumerationField.String(Label = emumerator.Name, Description = emumerator.Description)
-            | None, Some value -> StringInconsistent(emumerator.Name, value) |> Error
-            | None, None -> MissingValue(emumerator.Name) |> Error
-            | Some _, Some _ -> MultipleValues(emumerator.Name) |> Error
+                <| EnumerationField.String(Label = label, Description = description)
+            | None, Some value -> StringInconsistent(label, value) |> Error
+            | None, None -> MissingValue(label) |> Error
+            | Some _, Some _ -> MultipleValues(label) |> Error
         | Some None ->
-            EnumeratorError.UnknownStatus(emumerator.Name, emumerator.Status.Value)
+            EnumeratorError.UnknownStatus(label, enumerator.Status.Value)
             |> Error
 
     let internal effectiveEnumerationType (name: Name) (enumerationType: EnumerationType) (enumerators: EnumerationField list)
@@ -308,7 +325,7 @@ module Enumeration =
             |> Result.map (Map.ofList >> Enumeration.Int32)
             |> Result.mapError (fun errors -> Enumerator(name, errors))
 
-    let internal createEnumerationType (assembly: Assembly) (nameSpace: string) (name: Name) (enumerationType: EnumerationType) (description: Description) (enumerators: list<EnumerationField>) =
+    let internal createEnumerationType (assembly: Assembly) (nameSpace: NameSpace) (name: Name) (enumerationType: EnumerationType) (description: Description) (enumerators: list<EnumerationField>) =
         let duplicates =
             enumerators
             |> Seq.countBy (fun enumerationField ->
@@ -326,13 +343,13 @@ module Enumeration =
             let providedEnumType =
                 ProvidedTypeDefinition(
                     assembly,
-                    nameSpace,
-                    name,
+                    NameSpace.toString nameSpace,
+                    Name.toString name,
                     baseType = Some typeof<Enum>,
                     hideObjectMethods = true,
                     isErased = false
                 )
-
+            let description = Description.toString description
             providedEnumType.AddXmlDoc(description)
 
             effectiveEnumerationType name enumerationType enumerators
@@ -345,15 +362,18 @@ module Enumeration =
                             |> Map.toList
                             |> List.map
                                 (fun ((label, value), description) ->
+                                    let label = Label.toString label
                                     ProvidedField.Literal(label, providedEnumType, value), description)
                         | Enumeration.String enumerators ->
                             enumerators
                             |> Map.toList
                             |> List.map
                                 (fun (label, description) ->
+                                    let label = Label.toString label
                                     ProvidedField.Literal(label, providedEnumType, label), description)
                         |> List.map
                             (fun (providedField, description) ->
+                                let description = Description.toString description
                                 match description with
                                 | "" -> providedField
                                 | _ ->
@@ -364,22 +384,23 @@ module Enumeration =
                     providedEnumType)
 
     let createType (enumeration: BlpSchema.EnumerationType) (assembly: Assembly) (nameSpace: NameSpace) =
+        let name = Name.ofString enumeration.Name
         match enumeration.Status |> Option.map Union.fromString<Status> with
         | Some None ->
-            EnumerationError.UnknownStatus(enumeration.Name, enumeration.Status.Value)
+            EnumerationError.UnknownStatus(name, enumeration.Status.Value)
             |> Error
         | None
         | Some (Some Active) ->
             enumeration.Enumerators
             |> Array.map schemaEnumeratorToEnumerationField
             |> Array.fold Result.folder (Result.Ok [])
-            |> Result.mapError (fun errors -> EnumerationError.Enumerator(enumeration.Name, errors))
+            |> Result.mapError (fun errors -> EnumerationError.Enumerator(name, errors))
             |> Result.bind (fun enumerators ->
                 match Union.fromString<EnumerationType>(enumeration.Type) with
-                | Some enumeartion -> enumeartion |> Ok
-                | None -> UnknownType(enumeration.Name, enumeration.Type) |> Error
+                | Some enumeration -> enumeration |> Ok
+                | None -> UnknownType(name, enumeration.Type) |> Error
                 |> Result.bind (fun enumerationType ->
-                    createEnumerationType assembly nameSpace enumeration.Name enumerationType enumeration.Description enumerators))
+                    createEnumerationType assembly nameSpace name enumerationType (Description.ofString enumeration.Description) enumerators))
 module Choice =
     type ElementError =
         | UnknownType of Name: Name * TypeName: string
@@ -400,16 +421,17 @@ module Choice =
         let providedChoiceType =
             ProvidedTypeDefinition(
                 assembly,
-                nameSpace,
+                NameSpace.toString nameSpace,
                 choice.Name,
                 baseType = Some typeof<obj>,
                 hideObjectMethods = false,
                 isErased = false
             )
 
+        let choiceName = Name.ofString choice.Name
         match choice.Status |> Option.map Union.fromString<Status> with
         | Some None ->
-            ChoiceError.UnknownStatus(choice.Name, choice.Status.Value)
+            ChoiceError.UnknownStatus(choiceName, choice.Status.Value)
             |> Error
         | None
         | Some (Some Active) ->
@@ -417,29 +439,30 @@ module Choice =
                 choice.Elements
                 |> List.ofArray
                 |> List.map (fun element ->
-                    Enumeration.EnumerationField.String(element.Name, element.Description))
-            let enumName = sprintf "%sType" choice.Name
-            Enumeration.createEnumerationType assembly nameSpace enumName Enumeration.EnumerationType.String choice.Description enumerators
+                    Enumeration.EnumerationField.String(Label.ofString element.Name, Description.ofString element.Description))
+            let enumName = sprintf "%sType" choice.Name |> Name.ofString
+            Enumeration.createEnumerationType assembly nameSpace enumName Enumeration.EnumerationType.String (Description.ofString choice.Description) enumerators
             |> Result.mapError Enumeration
             |> Result.bind (fun enum ->
                 let enumField, property = Sequence.createImmutableProperty enumName enum
                 providedChoiceType.AddMember enumField
                 providedChoiceType.AddMember property
-
                 let elements =
                     choice.Elements
                     |> Array.map (fun element ->
+                        let name = Name.ofString element.Name
                         match tryGetType (element.Type) with
                         | Some propertyType ->
-                            let field, property = Sequence.createImmutableProperty element.Name (makeOptionType(propertyType))
+                            let field, property = Sequence.createImmutableProperty name (makeOptionType(propertyType))
                             providedChoiceType.AddMember field
                             providedChoiceType.AddMember property
                             (propertyType, field) |> Result.Ok
-                        | None -> UnknownType (element.Name, element.Type) |> Result.Error)
+                        | None -> UnknownType (name, element.Type) |> Result.Error)
+
                     |> Array.fold Result.folder (Result.Ok [])
 
                 elements
-                |> Result.mapError (fun errors -> ChoiceError.Element(choice.Name, errors))
+                |> Result.mapError (fun errors -> ChoiceError.Element(choiceName, errors))
                 |> Result.map (fun fields ->
                     fields
                     |> List.map snd
@@ -477,7 +500,7 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
                                       assemblyReplacementMap = [ ("BloombergProvider.DesignTime",
                                                                   "BloombergProvider.Runtime") ])
 
-    let nameSpace = "AlphaArchitect"
+    let nameSpace = NameSpace.ofString "AlphaArchitect"
 
     let createRootType (typeName, schemaPath: string) =
         let tempAssembly = ProvidedAssembly()
@@ -487,7 +510,7 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
         let rootType =
             ProvidedTypeDefinition(
                 tempAssembly,
-                nameSpace,
+                NameSpace.toString nameSpace,
                 typeName,
                 baseType = Some typeof<obj>,
                 hideObjectMethods = true,
@@ -546,10 +569,10 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
         ConcurrentDictionary<string, Lazy<ProvidedTypeDefinition>>()
 
     let rootType =
-        let t =
+        let rootType =
             ProvidedTypeDefinition(
                 assembly,
-                nameSpace,
+                NameSpace.toString nameSpace,
                 "BloombergProvider",
                 Some typeof<obj>,
                 hideObjectMethods = true,
@@ -559,13 +582,13 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
         let staticParams =
             [ ProvidedStaticParameter("Schema", typeof<string>) ]
 
-        t.AddXmlDoc
+        rootType.AddXmlDoc
             """
 <summary>Bloomberg Provider types based on blp schema file.</summary>
 <param name='SchemaFile'>The full path to the schema file to base this provider on.</param>
 """
 
-        t.DefineStaticParameters(
+        rootType.DefineStaticParameters(
             parameters = staticParams,
             instantiationFunction =
                 fun typeName args ->
@@ -577,9 +600,9 @@ type BasicGenerativeProvider(config: TypeProviderConfig) as this =
                         .Value
         )
 
-        t
+        rootType
 
-    do this.AddNamespace(nameSpace, [ rootType ])
+    do this.AddNamespace(NameSpace.toString nameSpace, [ rootType ])
 
 [<TypeProviderAssembly>]
 do ()
