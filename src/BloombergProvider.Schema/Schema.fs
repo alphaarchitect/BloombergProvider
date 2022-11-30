@@ -4,8 +4,7 @@ module Schema =
     open FSharp.Data
 
     [<Literal>]
-    let private BlpSchemaPath =
-        __SOURCE_DIRECTORY__ + "\\blp.schema.xsd"
+    let private BlpSchemaPath = __SOURCE_DIRECTORY__ + "\\blp.schema.xsd"
 
     type BlpSchema =
         XmlProvider<Schema=BlpSchemaPath, Global=true, InferTypesFromValues=true, EmbeddedResource="BloombergProvider.DesignTime, BloombergProvider.DesignTime.blpschema.xsd">

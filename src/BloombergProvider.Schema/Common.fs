@@ -5,8 +5,10 @@ open System.Reflection
 
 module Union =
     let fromString<'a> (string': string) =
-        match FSharpType.GetUnionCases(typeof<'a>, BindingFlags.Public ||| BindingFlags.NonPublic)
-              |> Array.filter (fun case -> case.Name = string') with
+        match
+            FSharpType.GetUnionCases(typeof<'a>, BindingFlags.Public ||| BindingFlags.NonPublic)
+            |> Array.filter (fun case -> case.Name = string')
+        with
         | [| case |] -> Some(FSharpValue.MakeUnion(case, [||]) :?> 'a)
         | _ -> None
 

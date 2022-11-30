@@ -4,23 +4,21 @@ module DependencyGraph =
     open QuikGraph
     open Schema
     open AlphaArchitect.Common
-    
+
     let create (schema: BlpSchema.Schema) =
         let typeArray =
-            [|schema.EnumerationTypes |> Array.map (fun enumeration -> enumeration.Name, ComplexType.Enumeration enumeration);
-              schema.SequenceTypes |> Array.map (fun sequence -> sequence.Name, ComplexType.Sequence sequence);
-              schema.ChoiceTypes |> Array.map (fun choice -> choice.Name, ComplexType.Choice choice)|]
+            [| schema.EnumerationTypes
+               |> Array.map (fun enumeration -> enumeration.Name, ComplexType.Enumeration enumeration)
+               schema.SequenceTypes
+               |> Array.map (fun sequence -> sequence.Name, ComplexType.Sequence sequence)
+               schema.ChoiceTypes
+               |> Array.map (fun choice -> choice.Name, ComplexType.Choice choice) |]
             |> Array.concat
 
         let graph = QuikGraph.AdjacencyGraph()
-        typeArray
-        |> Array.map snd
-        |> graph.AddVertexRange
-        |> ignore
+        typeArray |> Array.map snd |> graph.AddVertexRange |> ignore
 
-        let typeMap =
-            typeArray
-            |> Map.ofArray
+        let typeMap = typeArray |> Map.ofArray
 
         schema.SequenceTypes
         |> Array.collect (fun sequence ->
