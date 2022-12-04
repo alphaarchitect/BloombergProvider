@@ -1,2 +1,1 @@
-for %%S in (mktdata, refdata, srcref, mktvwap, mktdepthdata, mktbar, mktlist, apiflds, instruments, pagedata, tasvc, irdctk3) do
-	(SchemaDownloader_64.exe -file blp.%%S.schema.xml -auth none -s //blp/%%S)
+for %%S in (mktdata, refdata, srcref, mktvwap, mktdepthdata, mktbar, mktlist, apiflds, instruments, pagedata, tasvc, irdctk3) do (C:\blp\schemadownloader_1.0-windows\SchemaDownloader_64.exe -file blp.%%S.schema.xml -auth none -s //blp/%%S)

@@ -2,11 +2,9 @@
 <Project>
   <!-- See https://stackoverflow.com/questions/43921992/how-can-i-use-beforebuild-and-afterbuild-targets-with-visual-studio-2017 -->
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
-  <Import Project="..\..\netfx.props" />
-  <Import Project="$(SolutionDir)common.proj" />
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>netstandard2.1; net461</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
@@ -24,29 +22,15 @@
     <Compile Include="BloombergProvider.Runtime.fs" />
     <None Include="paket.references" />
   </ItemGroup>
-  <ItemGroup>
-    <!-- Be explicit about the version of FSharp.Core since we mention it in the manual nuget package spec -->
-    <PackageReference Include="FSharp.Core" Version="4.3.4" />
-  </ItemGroup>
   <Target Name="BeforeBuild">
     <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Restore" />
-    <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=netcoreapp3.1" />
     <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=netstandard2.1" />
-    <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=net461" />
   </Target>
   <Target Name="AfterBuild">
-    <CreateItem Include="..\BloombergProvider.DesignTime\bin\$(Configuration)\netcoreapp3.1\*.dll;..\BloombergProvider.DesignTime\bin\$(Configuration)\netcoreapp3.1\*.pdb">
-      <Output TaskParameter="Include" ItemName="DesignTimeBinaries1" />
-    </CreateItem>
-    <Copy SourceFiles="@(DesignTimeBinaries1)" DestinationFolder="$(OutputPath)/../typeproviders/fsharp41/netcoreapp3.1" />
-    <CreateItem Include="..\BloombergProvider.DesignTime\bin\$(Configuration)\net461\*.dll;..\BloombergProvider.DesignTime\bin\$(Configuration)\net461\*.pdb">
-      <Output TaskParameter="Include" ItemName="DesignTimeBinaries2" />
-    </CreateItem>
-    <Copy SourceFiles="@(DesignTimeBinaries2)" DestinationFolder="$(OutputPath)/../typeproviders/fsharp41/net45" />
     <CreateItem Include="..\BloombergProvider.DesignTime\bin\$(Configuration)\netstandard2.1\*.dll;..\BloombergProvider.DesignTime\bin\$(Configuration)\netstandard2.1\*.pdb">
-      <Output TaskParameter="Include" ItemName="DesignTimeBinaries3" />
+      <Output TaskParameter="Include" ItemName="DesignTimeBinaries" />
     </CreateItem>
-    <Copy SourceFiles="@(DesignTimeBinaries3)" DestinationFolder="$(OutputPath)/../typeproviders/fsharp41/netstandard2.1" />
+    <Copy SourceFiles="@(DesignTimeBinaries)" DestinationFolder="$(OutputPath)/../typeproviders/fsharp41/netstandard2.1" />
   </Target>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

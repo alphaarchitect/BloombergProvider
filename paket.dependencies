@@ -1,10 +1,11 @@
 storage: packages
 source https://nuget.org/api/v2
 
-frameworks: net45, netcoreapp3.1, netstandard2.0
+frameworks: net6.0, netstandard2.1
 
 # Add the nuget packages you use here
-nuget FSharp.Core 4.3.4
+nuget FSharp.Core >= 6 < 7
+nuget FSharp.Data
 
 nuget NETStandard.Library.NETFramework
 # nuget System.Text.Encoding.CodePages
@@ -15,7 +16,7 @@ github fsprojects/FSharp.TypeProviders.SDK src/ProvidedTypes.fs
 
 group Test
   source https://nuget.org/api/v2
-  frameworks: net461, netcoreapp3.1
+  frameworks: net6.0
 
   nuget NUnit
   nuget NUnit.Console

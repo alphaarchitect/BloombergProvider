@@ -1,34 +1,36 @@
 STORAGE: PACKAGES
-RESTRICTION: || (== net45) (== netcoreapp3.1) (== netstandard2.0)
+RESTRICTION: || (== net6.0) (== netstandard2.1)
 NUGET
   remote: https://www.nuget.org/api/v2
-    FSharp.Core (4.3.4)
+    FSharp.Core (6.0.7)
+    FSharp.Data (5.0.2)
+      FSharp.Core (>= 5.0.1)
     NETStandard.Library.NETFramework (2.0.0-preview2-25405-01)
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.SDK
-    src/ProvidedTypes.fs (f4aca36af04aa84b16ec04df6f6bf55ac2f17a73)
-    src/ProvidedTypes.fsi (f4aca36af04aa84b16ec04df6f6bf55ac2f17a73)
+    src/ProvidedTypes.fs (6ad1174db0794a348f4a1c0aa5a60ae3f1803810)
+    src/ProvidedTypes.fsi (6ad1174db0794a348f4a1c0aa5a60ae3f1803810)
 GROUP Test
-RESTRICTION: || (== net461) (== netcoreapp3.1)
+RESTRICTION: == net6.0
 NUGET
   remote: https://www.nuget.org/api/v2
-    FSharp.Core (5.0.2)
-    Microsoft.NETCore.Platforms (5.0.2) - restriction: || (&& (== net461) (< net35) (>= netstandard2.0)) (&& (== net461) (>= netcoreapp2.0)) (&& (== net461) (< netstandard1.0) (>= netstandard2.0) (>= win8)) (&& (== net461) (< netstandard1.3) (>= netstandard2.0) (>= wpa81)) (&& (== net461) (>= netstandard2.0) (>= uap10.0)) (&& (== net461) (>= netstandard2.0) (>= uap10.1)) (&& (== net461) (>= netstandard2.0) (>= wp8)) (== netcoreapp3.1)
-    NETStandard.Library (2.0.3) - restriction: || (&& (== net461) (< net35) (>= netstandard2.0)) (== netcoreapp3.1)
+    FSharp.Core (7.0)
+    Microsoft.NETCore.Platforms (7.0)
+    NETStandard.Library (2.0.3)
       Microsoft.NETCore.Platforms (>= 1.1)
-    NUnit (3.13.2)
-      NETStandard.Library (>= 2.0) - restriction: || (&& (== net461) (< net35) (>= netstandard2.0)) (== netcoreapp3.1)
-    NUnit.Console (3.12)
-      NUnit.ConsoleRunner (>= 3.12)
+    NUnit (3.13.3)
+      NETStandard.Library (>= 2.0)
+    NUnit.Console (3.16)
+      NUnit.ConsoleRunner (>= 3.16)
       NUnit.Extension.NUnitProjectLoader (>= 3.6)
       NUnit.Extension.NUnitV2Driver (>= 3.8)
       NUnit.Extension.NUnitV2ResultWriter (>= 3.6)
       NUnit.Extension.TeamCityEventListener (>= 1.0.7)
       NUnit.Extension.VSProjectLoader (>= 3.8)
-    NUnit.ConsoleRunner (3.12)
-    NUnit.Extension.NUnitProjectLoader (3.6)
-    NUnit.Extension.NUnitV2Driver (3.8)
-    NUnit.Extension.NUnitV2ResultWriter (3.6)
+    NUnit.ConsoleRunner (3.16)
+    NUnit.Extension.NUnitProjectLoader (3.7.1)
+    NUnit.Extension.NUnitV2Driver (3.9)
+    NUnit.Extension.NUnitV2ResultWriter (3.7)
     NUnit.Extension.TeamCityEventListener (1.0.7)
-    NUnit.Extension.VSProjectLoader (3.8)
-    NUnit3TestAdapter (4.0.0) - version_in_path: true
+    NUnit.Extension.VSProjectLoader (3.9)
+    NUnit3TestAdapter (4.3.1) - version_in_path: true

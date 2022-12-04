@@ -322,7 +322,11 @@ module Enumeration =
                     <| EnumerationField.Int32(Label = label, Value = int32 value, Description = description)
                 with :? FormatException ->
                     Int32Format(label, value) |> Error
-            | None, Some value when value = enumerator.Name || (value = "THAIL" && enumerator.Name = "THAI") ->
+            | None, Some value when
+                value = enumerator.Name
+                || (value = "THAIL" && enumerator.Name = "THAI")
+                || (value = "THAIK" && enumerator.Name = "THAI")
+                ->
                 Ok <| EnumerationField.String(Label = label, Description = description)
             | None, Some value -> StringInconsistent(label, value) |> Error
             | None, None -> MissingValue(label) |> Error
