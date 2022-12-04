@@ -2,7 +2,6 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <None Include="schemas\fetchschemas.bat" />
@@ -19,20 +18,11 @@
     <Content Include="schemas\blp.refdata.schema.xml" />
     <Content Include="schemas\blp.srcref.schema.xml" />
     <Content Include="schemas\blp.tasvc.schema.xml" />
-    <None Include="app.config" />
     <Compile Include="BloombergProvider.Tests.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
-    <PackageReference Include="QuikGraph.Graphviz" Version="2.3.1" />
-    <PackageReference Include="FSharp.Data" Version="4.2.2" />
-    <ProjectReference Include="..\..\src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj">
-      <Name>BloombergProvider.Runtime</Name>
-      <Project>{7e90d6ce-a10b-4858-a5bc-41df7250cbca}</Project>
-      <Private>True</Private>
-    </ProjectReference>
+    <ProjectReference Include="..\..\src\BloombergProvider.Runtime\BloombergProvider.Runtime.fsproj"/>
     <ProjectReference Include="..\..\src\BloombergProvider.Schema\BloombergProvider.Schema.fsproj" />
     <ProjectReference Include="..\..\src\BloombergProvider.DependencyGraph\BloombergProvider.DependencyGraph.fsproj" />
   </ItemGroup>
