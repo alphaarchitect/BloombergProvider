@@ -1,7 +1,7 @@
 namespace AlphaArchitect
 
-type Runtime = Empty
+open FSharp.Core.CompilerServices
 
 // Put the TypeProviderAssemblyAttribute in the runtime DLL, pointing to the design-time DLL
-[<assembly: CompilerServices.TypeProviderAssembly("BloombergProvider.DesignTime.dll")>]
+[<assembly: TypeProviderAssembly("BloombergProvider.DesignTime")>]
 do ()

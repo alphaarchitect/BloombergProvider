@@ -21,11 +21,8 @@ description
 tags
     F# fsharp typeproviders BloombergProvider
 files
-    bin/Release/net45/BloombergProvider.Runtime.* ==> lib/net45
     bin/Release/netstandard2.0/BloombergProvider.Runtime.* ==> lib/netstandard2.0
     bin/Release/typeproviders/fsharp41/netstandard2.0/*.dll ==> typeproviders/fsharp41/netstandard2.0
-    bin/Release/typeproviders/fsharp41/netcoreapp3.1/*.dll ==> typeproviders/fsharp41/netcoreapp3.1
-    bin/Release/typeproviders/fsharp41/net45/*.dll ==> typeproviders/fsharp41/net45
 references
     BloombergProvider.Runtime.dll
 dependencies
@@ -33,7 +30,7 @@ dependencies
 
 # put any package references here
 #  Some.Package
-#  framework: netcoreapp3.1
+#  framework: net6.0
 #    System.Text.Encoding.CodePages >= LOCKEDVERSION
 #  framework: netstandard2.0
 #    System.Text.Encoding.CodePages >= LOCKEDVERSION

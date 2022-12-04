@@ -1,36 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project>
-  <!-- See https://stackoverflow.com/questions/43921992/how-can-i-use-beforebuild-and-afterbuild-targets-with-visual-studio-2017 -->
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <FSharpToolsDirectory>typeproviders</FSharpToolsDirectory>
+    <PackagePath>typeproviders</PackagePath>
   </PropertyGroup>
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>
-    <Content Include="..\..\tests\BloombergProvider.Tests\schemas\*.xml" Link="schemas\%(Filename)%(Extension)" />
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fsi">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fsi</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fs</Link>
-    </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="BloombergProvider.Runtime.fs" />
+    <Compile Include="TypeProviderAssembly.fs" />
     <None Include="paket.references" />
+    <PackageReference Update="FSharp.Core" Version="6.0.7" />
+    <ProjectReference Include="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj">
+      <IsFSharpDesignTimeProvider>true</IsFSharpDesignTimeProvider>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
-  <Target Name="BeforeBuild">
-    <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Restore" />
-    <MSBuild Projects="..\BloombergProvider.DesignTime\BloombergProvider.DesignTime.fsproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=netstandard2.1" />
-  </Target>
-  <Target Name="AfterBuild">
-    <CreateItem Include="..\BloombergProvider.DesignTime\bin\$(Configuration)\netstandard2.1\*.dll;..\BloombergProvider.DesignTime\bin\$(Configuration)\netstandard2.1\*.pdb">
-      <Output TaskParameter="Include" ItemName="DesignTimeBinaries" />
-    </CreateItem>
-    <Copy SourceFiles="@(DesignTimeBinaries)" DestinationFolder="$(OutputPath)/../typeproviders/fsharp41/netstandard2.1" />
-  </Target>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
