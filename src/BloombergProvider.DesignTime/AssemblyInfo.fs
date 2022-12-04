@@ -3,11 +3,11 @@ namespace System
 
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("BloombergProvider.DesignTime")>]
-[<assembly: AssemblyProductAttribute("BloombergProvider")>]
-[<assembly: AssemblyDescriptionAttribute("This library is for the .NET platform implementing BloombergProvider.")>]
-[<assembly: AssemblyVersionAttribute("1.0.0")>]
-[<assembly: AssemblyFileVersionAttribute("1.0.0")>]
+[<assembly: AssemblyTitle("BloombergProvider.DesignTime")>]
+[<assembly: AssemblyProduct("BloombergProvider")>]
+[<assembly: AssemblyDescription("This library is for the .NET platform implementing BloombergProvider.")>]
+[<assembly: AssemblyVersion("1.0.0")>]
+[<assembly: AssemblyFileVersion("1.0.0")>]
 do ()
 
 module internal AssemblyVersionInformation =

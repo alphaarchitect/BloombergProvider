@@ -4,6 +4,7 @@
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
     <DefineConstants>IS_DESIGNTIME</DefineConstants>
+    <Optimize>true</Optimize>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
